@@ -1,153 +1,195 @@
-# Instalación de Puppet desde Ubuntu 22.04
-# Actualizamos todo. 
-sudo apt update
-sudo apt upgrade
+# 🐾 Guía de Instalación de Puppet en Ubuntu 22.04
 
-# Root ubuntu: 
-sudo -i
+Esta guía cubre la instalación y configuración básica de Puppet Master y Puppet Agent en Ubuntu 22.04.
 
-# Instalación de herramienta básica 
+---
+
+## 📋 Índice
+
+1. [Requisitos previos](#requisitos-previos)  
+2. [🏷️ Configuración de nombres de host](#configuración-de-nombres-de-host)  
+3. [Instalación del repositorio de Puppet](#instalación-del-repositorio-de-puppet)  
+4. [Instalación de Puppet](#instalación-de-puppet)  
+5. [Configuración del Puppet Master](#configuración-del-puppet-master)  
+6. [Configuración del Puppet Agent](#configuración-del-puppet-agent)  
+7. [Firma de certificados](#firma-de-certificados)  
+8. [Solución de errores comunes](#solución-de-errores-comunes)  
+9. [Validación final](#validación-final)
+
+---
+
+## ✅ Requisitos previos
+
+```bash
+sudo apt update && sudo apt upgrade -y
 sudo apt install -y wget
+sudo -i
+```
 
-# Configuración de hostname del servidor maestro
+## 🏷️ Configuración de nombres de host
+
+### En el Puppet Master:
+
+```bash
 sudo hostnamectl set-hostname puppetmaster.local
-echo "127.0.0.1 $(hostname)" | sudo tee -a /etc/hosts” 
+echo "127.0.0.1 puppetmaster.local puppet" | sudo tee -a /etc/hosts
+```
 
-# Configuración de hostname del servidor agente
+### En el Puppet Agent:
+
+```bash
 sudo hostnamectl set-hostname puppetagent.local
-echo "127.0.0.1 $(hostname)" | sudo tee -a /etc/hosts” 
+echo "127.0.0.1 puppetagent.local agent" | sudo tee -a /etc/hosts
+```
 
-# Usa wget para descargar el archivo desde el repositorio de Puppet: 
-# Puppet Open Source 
-wget 'https://apt.puppetlabs.com/puppet-release-jammy.deb'
+## 📦 Instalación del repositorio de Puppet
 
-# Ejecuta el instalador: 
-# Puppet Open Source: 
-dpkg –i puppet-release-jammy.deb
+```bash
+wget https://apt.puppetlabs.com/puppet-release-jammy.deb
+sudo dpkg -i puppet-release-jammy.deb
+sudo apt update
+```
 
-# Actualizamos para obtener el servidor maestro o el servidor agente.
-apt update
+## 🛠️ Instalación de Puppet
 
-# Instalación del servidor maestro:
-apt install puppetserver
+### En el Puppet Master:
 
-# Instalación del servidor agente:
-apt install puppet-agent
+```bash
+sudo apt install -y puppetserver
+```
 
-# Configuración del servidor maestro:
-# Usa la opción puppet config para establecer los valores para el dns_alt_names de la configuración: 
-/opt/puppetlabs/bin/puppet config set dns_alt_names 'puppet,puppetmaster.local' -section main 
- 
-# Si inspecciona el archivo de configuración, verá que se ha añadido la configuración: 
+### En el Puppet Agent:
+
+```bash
+sudo apt install -y puppet-agent
+```
+
+## ⚙️ Configuración del Puppet Master
+
+```bash
+/opt/puppetlabs/bin/puppet config set dns_alt_names 'puppet,puppetmaster.local' --section main
 cat /etc/puppetlabs/puppet/puppet.conf
+```
 
-# [main]  
-# dns_alt_names = puppet,puppet.example.com
+Edita el archivo `/etc/hosts` y añade:
 
-# Actualizamos el Puppet master /etc/hosts para resolver las direcciones IP de sus nodos gestionados. Por ejemplo, su /etc/hosts El archivo podría parecerse a lo siguiente: 
-Sudo nano /etc/hosts
+```text
+192.168.1.42   puppetmaster.local puppet
+192.168.1.44   puppetagent.local agent
+```
 
-# 127.0.0.1   localhost 
-# 192.168.1.42   puppetmaster.local puppet 
-# 192.168.1.44   puppetagent.local agent 
-# The following lines are desirable for IPv6 capable hosts 
-# ::1     localhost ip6-localhost ip6-loopback 
-# ff02::1 ip6-allnodes 
-# ff02::2 ip6-allrouters
+Edita la memoria para Java en `/etc/default/puppetserver`:
 
-# Modificar puppet principal: 
-Sudo nano /etc/default/pupetserver
+```bash
+JAVA_ARGS="-Xms2g -Xmx2g -Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
+```
 
-# JAVA_ARGS="-Xms2g -Xmx2g Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
+Inicia y habilita el servicio:
 
-# Inicia el servicio: 
-sudo systemctl start puppetserver 
-sudo systemctl enable puppetserver 
-
-# Verifica que Puppet Server esté funcionando: 
+```bash
+sudo systemctl start puppetserver
+sudo systemctl enable puppetserver
 sudo systemctl status puppetserver
+```
 
-# Por defecto, el Puppet master escucha las conexiones de los clientes en el puerto 8140. Si el puppetserver Si el servicio no se inicia, compruebe que el puerto no esté ya en uso: 
-netstat -anpl | grep 8140 
+Habilita el puerto 8140:
 
-# O habilitamos el puerto que utiliza puppet en nuestras máquinas. 
-# Habilitar UFW: 
-sudo ufw enable 
+```bash
+sudo ufw allow 8140/tcp
+sudo ufw enable
+sudo ufw status
+```
 
-#Permitir el puerto 8140 para Puppet: 
-sudo ufw allow 8140/tcp 
+## 🤖 Configuración del Puppet Agent
 
-# Verificar las reglas de UFW: 
-sudo ufw statu
+Edita `/etc/hosts`:
 
-# Configuración del servidor agente:
-# Modifique los archivos hosts de sus nodos administrados para resolver la IP del Puppet master. Para ello, añada una línea como: 
-sudo /etc/hosts 
-# 192.168.1.42    puppetmaster.local puppet 
+```text
+192.168.1.42    puppetmaster.local puppet
+```
 
-# En cada nodo gestionado, utilice la opción puppet config para establecer el valor de su server en el FQDN del maestro: 
+Configura el FQDN del master:
+
+```bash
 /opt/puppetlabs/bin/puppet config set server 'puppetmaster.local' --section main
+cat /etc/puppetlabs/puppet/puppet.conf
+```
 
-# Si inspecciona el archivo de configuración de los nodos, verá que se ha añadido la configuración: 
-cat /etc/puppetlabs/puppet/puppet.conf 
-# [main] 
-# server = puppetmaster.com
+Inicia y habilita el servicio:
 
-# Usa la opción puppet resource para iniciar y activar el servicio de agente Puppet: 
+```bash
 /opt/puppetlabs/bin/puppet resource service puppet ensure=running enable=true
+# o alternativamente:
+sudo systemctl start puppet
+sudo systemctl enable puppet
+```
 
-# En los sistemas systemd, el comando anterior es equivalente a usar estos dos systemctl comandos: 
-systemctl start puppet 
-systemctl enable puppet
+## 🔐 Firma de certificados
 
-# Verifica que Puppet Server esté funcionando: 
-sudo systemctl status puppet
+En el agente:
 
-# Firmamos el certificado del cliente: 
-# Antes de que sus nodos administrados puedan recibir configuraciones del maestro, primero deben ser autenticados: 
-# En sus agentes Puppet, genere un certificado para que el Puppet master lo firme: 
+```bash
 /opt/puppetlabs/bin/puppet agent -t
+```
 
-# Este comando emitirá un error, indicando que no se ha encontrado ningún certificado. Este error se debe a que el certificado generado debe ser aprobado por el Puppet master. 
-# Cuando Puppet se configura por primera vez, necesita generar un certificado para el servidor (Puppet Master). Si ese archivo no está presente, puedes intentar regenerar los certificados. 
-# Ejecuta el siguiente comando para configurar la autoridad de certificación (CA) y generar los certificados del Puppet Master: 
-sudo /opt/puppetlabs/bin/puppetserver ca setup 
-  
-# Ingrese a su Puppet master y haga una lista de los certificados que necesitan ser aprobados:
-/opt/puppetlabs/bin/puppetserver ca list 
- 
-# Debería mostrar una lista con los nombres de host de los nodos del agente. 
-# Aprobar los certificados: 
-/opt/puppetlabs/bin/puppetserver ca sign - -certname  puppetagent.local 
- 
-# Vuelve a los nodos del agente Puppet y ejecuta el agente Puppet de nuevo: 
-/opt/puppetlabs/bin/puppet agent –t
+En el master:
 
-###############################################################################################################################
-# En el caso de que no funciona la creación de certificación: 
-# Asegúrate de que el nombre de host de tu nodo coincide con el certname especificado en su archivo de configuración: 
-sudo nano /etc/puppetlabs/puppet/puppet.conf 
-# El certname debe coincidir con el nombre que usaste al generar el certificado. 
-# certname = puppetagent.local 
- 
-# Si realizas cambios, elimina los certificados locales del nodo para regenerarlos: 
+```bash
+sudo /opt/puppetlabs/bin/puppetserver ca setup
+/opt/puppetlabs/bin/puppetserver ca list
+/opt/puppetlabs/bin/puppetserver ca sign --certname puppetagent.local
+```
+
+Vuelve al agente y ejecuta:
+
+```bash
+/opt/puppetlabs/bin/puppet agent -t
+```
+
+## 🧩 Solución de errores comunes
+
+### Certificado no coincide
+
+Verifica `certname`:
+
+```bash
+sudo nano /etc/puppetlabs/puppet/puppet.conf
+# certname = puppetagent.local
+```
+
+Si haces cambios:
+
+```bash
 sudo rm -rf /etc/puppetlabs/puppet/ssl/*
+sudo /opt/puppetlabs/bin/puppet agent --test
+```
 
-# Reinicia el agente Puppet para que solicite un nuevo certificado: 
-sudo /opt/puppetlabs/bin/puppet agent –test 
-################################################################################################################################
-# En el caso del estado de puppet sale: /lib/systemd/system/puppetserver.service:45: standard 
-# output type syslog is obsolete 
-# Editar el archivo de unidad del servicio puppetserver.service: 
-  
-# El archivo de configuración del servicio de Puppet Server (puppetserver.service) está ubicado en “/lib/systemd/system/puppetserver.service”. Necesitarás editar este archivo para cambiar el tipo de salida. 
-sudo nano  /lib/systemd/system/puppetserver.service 
- 
-# Busca la línea que contiene StandardOutput=syslog y lo cambiamos a StandardOutput=journal 
-# Esto hace que los logs del servicio de Puppet Server se registren en el journal de systemd en lugar de syslog. 
-# Recargar el daemon de systemd y reiniciar el servicio: 
-  
-# Una vez que hayas modificado el archivo de unidad, es necesario recargar los archivos de configuración de systemd y reiniciar el servicio de Puppet Server para aplicar los cambios: 
-sudo systemctl daemon-reload 
+### Error de `syslog` obsoleto:
+
+Edita `/lib/systemd/system/puppetserver.service` y reemplaza:
+
+```
+StandardOutput=syslog
+```
+
+por:
+
+```
+StandardOutput=journal
+```
+
+Luego recarga daemon:
+
+```bash
+sudo systemctl daemon-reload
 sudo systemctl restart puppetserver
-################################################################################################################################
+```
+
+## ✅ Validación final
+
+Verifica que el servicio funcione en ambos nodos:
+
+```bash
+sudo systemctl status puppetserver
+sudo systemctl status puppet
+```
