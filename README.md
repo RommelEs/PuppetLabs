@@ -8,11 +8,10 @@ Este repositorio contiene una guía paso a paso para instalar **Puppet** (Master
 
 ```
 .
-├── docs/
-│   └── instalacion_puppet.md   # Guía detallada para instalar Puppet
-├── manifests/
-│   └── apache.pp               # Manifiesto para instalar y configurar Apache
-└── README.md                   # Este archivo
+├── Instalacion.md                   # Guía detallada para instalar Puppet
+├── manifiesto_servidor_apache.md   # Explicación del manifiesto para Apache
+├── apache.pp                        # Manifiesto Puppet para Apache
+└── README.md                        # Este archivo
 ```
 
 ---
@@ -33,7 +32,7 @@ Automatizar la instalación y configuración de un servidor Apache en un sistema
 
 ## 📘 Documentación
 
-Lee la guía completa en [`docs/instalacion_puppet.md`](docs/instalacion_puppet.md), donde encontrarás:
+Lee la guía completa en [`Instalacion.md`](Instalacion.md), donde encontrarás:
 
 - Instalación del Puppet Master y Agent
 - Configuración de certificados
@@ -44,8 +43,18 @@ Lee la guía completa en [`docs/instalacion_puppet.md`](docs/instalacion_puppet.
 
 ## 📦 Manifiesto Apache
 
-El archivo [`manifests/apache.pp`](manifests/apache.pp) contiene un manifiesto Puppet que:
+Lee la explicación del manifiesto en [`manifiesto_servidor_apache.md`](manifiesto_servidor_apache.md).
+
+El archivo `apache.pp` contiene un manifiesto Puppet que:
 
 - Instala Apache (`apache2`)
 - Asegura que el servicio esté en ejecución y habilitado
 - Crea una página web HTML básica
+
+---
+
+## ▶️ Aplicación rápida
+
+```bash
+sudo /opt/puppetlabs/bin/puppet apply apache.pp
+```
